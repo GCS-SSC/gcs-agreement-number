@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources } from '@gcs-ssc/extensions'
 import { ConfigSchema, defaultConfig, defaultPiece, effectiveConfig, parseConfig, renderNumber, renderVariable, type NumberPiece } from '../../shared/config'
-import { messages } from '../../shared/messages'
+import { messages } from '../../i18n/messages'
 
 const sources = Object.fromEntries(GCS_AGREEMENT_NUMBER_FIELDS.map(field => [field, '2026-04-01'])) as GcsAgreementNumberSources
 const variable = (patch = {}): Extract<NumberPiece, { type: 'variable' }> => ({ ...defaultPiece('variable'), ...patch }) as Extract<NumberPiece, { type: 'variable' }>

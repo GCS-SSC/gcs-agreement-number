@@ -1,4 +1,5 @@
-export const messages = {
+import { defineGcsExtensionMessages } from '@gcs-ssc/extensions'
+export const messages = defineGcsExtensionMessages({
   en: {
     'title': 'Agreement number format', 'description': 'Build the number in order: prefix, body, suffix. Include at least one sequence. The complete number must fit within 15 characters.',
     'inherit': 'Use agency defaults', 'prefix': 'Prefix', 'body': 'Body', 'suffix': 'Suffix', 'type': 'Piece type',
@@ -41,4 +42,4 @@ export const messages = {
     'program.id': 'Programme · ID', 'program.name_en': 'Programme · Nom anglais', 'program.name_fr': 'Programme · Nom français',
     'stream.id': 'Volet · ID', 'stream.name_en': 'Volet · Nom anglais', 'stream.name_fr': 'Volet · Nom français'
   }
-} as const
+})

@@ -3,12 +3,11 @@ import { computed, ref, watch, type Ref } from 'vue'
 import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources, type GcsExtensionJsonConfig } from '@gcs-ssc/extensions'
 import { ExtensionCheckbox, ExtensionFormField, ExtensionInput, ExtensionSelectMenu, useExtensionI18n } from '@gcs-ssc/extensions/ui'
 import { ConfigSchema, defaultConfig, defaultPiece, PIECES, TRANSFORMS, renderNumber, type NumberConfig, type NumberPiece } from '../shared/config'
-import { messages } from '../shared/messages'
+import { messages } from '../i18n/messages'
 
 const { streamId, disabled = false, readOnly = false } = defineProps<{ streamId?: string; agencyId?: string; disabled?: boolean; readOnly?: boolean }>()
 const model = defineModel<GcsExtensionJsonConfig>({ required: true })
-const { locale } = useExtensionI18n()
-const t = (key: keyof typeof messages.en) => messages[locale.value === 'fr' ? 'fr' : 'en'][key]
+const { t } = useExtensionI18n(messages)
 const copyConfig = (value: GcsExtensionJsonConfig): NumberConfig => JSON.parse(JSON.stringify({ ...defaultConfig(), ...value })) as NumberConfig
 const local: Ref<NumberConfig> = ref(copyConfig(model.value))
 const locked = computed(() => disabled || readOnly)

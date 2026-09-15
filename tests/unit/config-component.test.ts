@@ -11,7 +11,7 @@ const locale = ref('en')
 beforeEach(() => {
   locale.value = 'en'
   const runtime = createExtensionTestUiRuntime()
-  installExtensionTestUiRuntime({ composables: { ...runtime.composables, useI18n: () => ({ locale, t: key => key, n: value => String(value) }) } })
+  installExtensionTestUiRuntime({ composables: { ...runtime.composables, useI18n: () => ({ locale, n: value => String(value) }) } })
 })
 describe('independent numbering configuration UI', () => {
   it('renders ordered sections and sample without allocating or calling an API', () => {

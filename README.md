@@ -1,6 +1,6 @@
 # Agreement numbering
 
-Requires GCS-SSC SDK 0.2.2 and the `agreement-number-provider` and
+Requires GCS-SSC SDK 0.3.0 and the `agreement-number-provider` and
 `configuration-access` host capabilities. Enable for an Agency, then for each
 Stream that should generate numbers. Managers configure Agency defaults and
 Stream overrides using the existing extension settings dialog.
@@ -50,6 +50,16 @@ can run against a separately started compatible host. Its seed account is
 `root@example.com` / `password123`; use only an isolated demo/test host.
 
 All extension implementation tests, fixtures, translations and migrations live
-here. Host/private-tooling tests cover only the SDK and host boundaries. This new
-workspace has not been committed or published; register its independent repository
-and gitlink when preparing commits, before updating the host pin.
+here. Host/private-tooling tests cover only the SDK and host boundaries. The independent private repository is `GCS-SSC/gcs-agreement-number`; the host
+tracks it as a submodule. The initial numbering implementation is committed on
+`feature/feat/agreement-number`.
+
+## Translation ownership
+
+Requires SDK 0.3.0. Interface catalogs live in this package's `i18n/` directory.
+Define matching English/French keys and named placeholders with
+`defineGcsExtensionMessages`, then use `useExtensionI18n(catalog)` in UI or
+`translateGcsExtensionMessage` in shared/server code. There is no host message
+lookup or fallback. Keep extension-authored common labels and validation text in
+this package; treat bilingual domain values and already-localized errors as data.
+The package owns translation tests and includes catalogs in its coverage inventory.

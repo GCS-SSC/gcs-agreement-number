@@ -9,7 +9,7 @@ export default defineConfig({
     include: ['tests/unit/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['server/**/*.ts', 'shared/**/*.ts', 'components/**/*.vue'],
+      include: ['i18n/**/*.ts', 'server/**/*.ts', 'shared/**/*.ts', 'components/**/*.vue'],
       thresholds: {
         lines: 80,
         functions: 80,
