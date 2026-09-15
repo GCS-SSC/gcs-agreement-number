@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 import { beforeEach, describe, expect, it } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
+import { defineComponent, h, ref } from 'vue'
 import { installExtensionTestUiRuntime, createExtensionTestUiRuntime } from '@gcs-ssc/extensions/testing'
-import { ExtensionInput, ExtensionSelectMenu, ExtensionFormField } from '@gcs-ssc/extensions/ui'
+import { ExtensionAlert, ExtensionInput, ExtensionSelectMenu, ExtensionFormField } from '@gcs-ssc/extensions/ui'
 import Config from '../../components/NumberingConfig.vue'
 import { ConfigSchema, defaultConfig, defaultPiece } from '../../shared/config'
 
@@ -11,7 +11,10 @@ const locale = ref('en')
 beforeEach(() => {
   locale.value = 'en'
   const runtime = createExtensionTestUiRuntime()
-  installExtensionTestUiRuntime({ composables: { ...runtime.composables, useI18n: () => ({ locale, n: value => String(value) }) } })
+  installExtensionTestUiRuntime({ components: { ...runtime.components, UAlert: defineComponent({
+    inheritAttrs: false,
+    setup(_, { attrs, slots }) { return () => h('div', attrs, [attrs.title as string, slots.description?.()]) }
+  }) }, composables: { ...runtime.composables, useI18n: () => ({ locale, n: value => String(value) }) } })
 })
 describe('independent numbering configuration UI', () => {
   it('renders ordered sections and sample without allocating or calling an API', () => {
@@ -41,11 +44,12 @@ describe('independent numbering configuration UI', () => {
     await wrapper.setProps({ modelValue: { ...config, suffix: { ...defaultPiece('variable'), transform: 'substring' } } })
     expect(wrapper.findAllComponents(ExtensionFormField).some(field => String(field.vm.$attrs.label).includes('Starting position'))).toBe(true)
     await wrapper.setProps({ modelValue: { ...defaultConfig(), body: defaultPiece('fixed') } })
-    expect(wrapper.get('[role="alert"]').text()).toContain('include a sequence')
+    expect(wrapper.get('[role="alert"]').text()).toContain('Include at least one sequence')
   })
   it('does not report a sample mismatch as a configuration validation error', async () => {
     const wrapper = mount(Config, { props: { modelValue: { ...defaultConfig(), suffix: { ...defaultPiece('variable'), transform: 'regex', pattern: '^ZZZ', group: 0 } } } })
-    expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+    expect(wrapper.findComponent(ExtensionAlert).vm.$attrs.color).toBe('warning')
+    expect(wrapper.get('[role="alert"]').text()).toContain('does not match the sample')
     wrapper.findAllComponents(ExtensionSelectMenu)[1]!.vm.$emit('update:modelValue', null)
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('No number is reserved')
@@ -71,11 +75,11 @@ it('clears hidden invalid extraction settings when changing transform', async ()
   } } })
   expect(wrapper.find('[role="alert"]').exists()).toBe(true)
   const transform = wrapper.findAllComponents(ExtensionSelectMenu).at(-1)!
-  transform.vm.$emit('update:modelValue', 'year2')
+  transform.vm.$emit('update:modelValue', 'regex')
   await wrapper.vm.$nextTick()
   const changed = wrapper.emitted('update:modelValue')!.at(-1)![0]
   expect(ConfigSchema.safeParse(changed).success).toBe(true)
-  expect(changed).toMatchObject({ suffix: { field: 'agreement.startDate', transform: 'year2' } })
+  expect(changed).toMatchObject({ suffix: { field: 'agreement.startDate', transform: 'regex' } })
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
 })
 
@@ -89,4 +93,35 @@ it('requires scope, emits changes, and restores saved legacy stream scope', asyn
   scope.vm.$emit('update:modelValue', null)
   await wrapper.vm.$nextTick()
   expect(wrapper.find('[role="alert"]').exists()).toBe(true)
+})
+
+it('offers only general extraction rules in both languages and hydrates saved year rules as regex', async () => {
+  const wrapper = mount(Config, { props: { modelValue: {
+    ...defaultConfig(), suffix: { ...defaultPiece('variable'), transform: 'year2' }
+  } } })
+  for (const language of ['en', 'fr']) {
+    locale.value = language
+    await wrapper.vm.$nextTick()
+    const transform = wrapper.findAllComponents(ExtensionSelectMenu).at(-1)!
+    expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toMatchObject({ suffix: { transform: 'regex' } })
+    expect((transform.vm.$attrs.items as { value: string }[]).map(item => item.value)).toEqual(['whole', 'substring', 'upper', 'lower', 'regex'])
+    expect(wrapper.text()).toContain('AGR-0000126')
+  }
+})
+
+
+it('localizes preview warnings and replaces them with errors or the recovered example', async () => {
+  const wrapper = mount(Config, { props: { modelValue: {
+    ...defaultConfig(), suffix: { ...defaultPiece('variable'), pattern: '^ZZZ', group: 0 }
+  } } })
+  expect(wrapper.findComponent(ExtensionAlert).vm.$attrs.color).toBe('warning')
+  locale.value = 'fr'
+  await wrapper.vm.$nextTick()
+  expect(wrapper.get('[role="alert"]').text()).toContain('ne correspond pas')
+  await wrapper.setProps({ modelValue: { ...defaultConfig(), suffix: { ...defaultPiece('variable'), pattern: '[' } } })
+  expect(wrapper.findComponent(ExtensionAlert).vm.$attrs.color).toBe('error')
+  expect(wrapper.get('[role="alert"]').text()).toContain('expression régulière est invalide')
+  await wrapper.setProps({ modelValue: defaultConfig() })
+  expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+  expect(wrapper.text()).toContain('AGR-00001')
 })

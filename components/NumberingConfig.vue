@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Ref } from 'vue'
-import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources, type GcsExtensionJsonConfig } from '@gcs-ssc/extensions'
-import { ExtensionFormField, ExtensionInput, ExtensionSelectMenu, useExtensionI18n } from '@gcs-ssc/extensions/ui'
-import { COUNTER_SCOPES, ConfigSchema, parseConfig, defaultConfig, defaultPiece, PIECES, TRANSFORMS, renderNumber, type NumberConfig, type NumberPiece } from '../shared/config'
+import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsExtensionJsonConfig } from '@gcs-ssc/extensions'
+import { ExtensionAlert, ExtensionFormField, ExtensionInput, ExtensionSelectMenu, useExtensionI18n } from '@gcs-ssc/extensions/ui'
+import { COUNTER_SCOPES, ConfigSchema, parseConfig, defaultConfig, defaultPiece, PIECES, TRANSFORMS, type NumberConfig, type NumberPiece } from '../shared/config'
+import { getNumberPreview } from '../shared/preview'
 import { messages } from '../i18n/messages'
 
 const { disabled = false, readOnly = false } = defineProps<{ streamId?: string; agencyId?: string; disabled?: boolean; readOnly?: boolean }>()
 const model = defineModel<GcsExtensionJsonConfig>({ required: true })
-const { t } = useExtensionI18n(messages)
+const { t, locale } = useExtensionI18n(messages)
+/**
+ * Hydrate saved configuration while preserving incomplete edits for validation.
+ * @param value - Saved or edited extension configuration.
+ * @returns Detached configuration for the editor.
+ */
 const copyConfig = (value: GcsExtensionJsonConfig): NumberConfig => {
-  try { return parseConfig(value) } catch { return JSON.parse(JSON.stringify({ ...defaultConfig(), ...value })) as NumberConfig }
+  try {
+    return parseConfig(value)
+  } catch {
+    return JSON.parse(JSON.stringify({ ...defaultConfig(), ...value })) as NumberConfig
+  }
 }
 const local: Ref<NumberConfig> = ref(copyConfig(model.value))
 const locked = computed(() => disabled || readOnly)
@@ -20,19 +30,15 @@ const options = computed(() => ['fixed', 'variable', 'sequence'].map(value => ({
 const scopes = computed(() => COUNTER_SCOPES.map(value => ({ value, label: t(value) })))
 const fields = computed(() => GCS_AGREEMENT_NUMBER_FIELDS.map(value => ({ value, label: t(value) })))
 const transforms = computed(() => TRANSFORMS.map(value => ({ value, label: t(value) })))
-const preview = computed(() => {
-  if (!result.value.success) return null
-  const sources = Object.fromEntries(GCS_AGREEMENT_NUMBER_FIELDS.map(field => [field, field.endsWith('Date') ? '2026-04-01' : field.endsWith('.id') ? '12' : 'ABC'])) as GcsAgreementNumberSources
-  const sequences = Object.fromEntries(PIECES.map(name => [name, local.value[name].type === 'sequence' ? local.value[name].start : '1']))
-  try {
-    return renderNumber(result.value.data, sources, sequences)
-  } catch {
-    return null
-  }
-})
+const preview = computed(() => getNumberPreview(local.value, locale.value))
 const changeType = (name: typeof PIECES[number], value: unknown) => {
   if (value === 'fixed' || value === 'variable' || value === 'sequence') local.value[name] = defaultPiece(value)
 }
+/**
+ *
+ * @param name - Piece to update.
+ * @param value - Selected extraction rule.
+ */
 const changeTransform = (name: typeof PIECES[number], value: unknown) => {
   const piece = local.value[name]
   if (piece.type !== 'variable' || !TRANSFORMS.includes(value as typeof TRANSFORMS[number])) return
@@ -64,7 +70,7 @@ watch(model, value => {
       </ExtensionFormField>
     </section>
     <div class="space-y-6">
-      <section v-for="name in PIECES" :key="name" class="space-y-4 border-t border-default pt-5" :aria-describedby="result.success ? 'numbering-instructions' : 'numbering-instructions numbering-error'">
+      <section v-for="name in PIECES" :key="name" class="space-y-4 border-t border-default pt-5" :aria-describedby="preview.status === 'success' ? 'numbering-instructions' : 'numbering-instructions numbering-error'">
         <h4 class="text-base font-semibold text-highlighted">
           {{ t(name) }}
         </h4>
@@ -93,22 +99,22 @@ watch(model, value => {
             <ExtensionFormField :label="t('transform')" :name="`${name}.transform`" :error="fieldError(`${name}.transform`)" required>
               <ExtensionSelectMenu :model-value="local[name].transform" :items="transforms" value-key="value" :disabled="locked" @update:model-value="changeTransform(name, $event)" />
             </ExtensionFormField>
-            <template v-if="local[name].transform === 'substring'">
+            <div v-if="local[name].transform === 'substring'" class="numbering-extraction-settings grid gap-4 sm:grid-cols-2">
               <ExtensionFormField :label="t('offset')" :name="`${name}.offset`" :error="fieldError(`${name}.offset`)" required>
                 <ExtensionInput v-model="local[name].offset" type="number" :min="0" :max="4096" :disabled="locked" />
               </ExtensionFormField>
               <ExtensionFormField :label="t('length')" :name="`${name}.length`" :error="fieldError(`${name}.length`)" required>
                 <ExtensionInput v-model="local[name].length" type="number" :min="1" :max="15" :disabled="locked" />
               </ExtensionFormField>
-            </template>
-            <template v-if="local[name].transform === 'regex'">
+            </div>
+            <div v-if="local[name].transform === 'regex'" class="numbering-extraction-settings grid gap-4 sm:grid-cols-2">
               <ExtensionFormField :label="t('pattern')" :name="`${name}.pattern`" :error="fieldError(`${name}.pattern`)" :description="t('regexHelp')" required>
                 <ExtensionInput v-model="local[name].pattern" :maxlength="256" :disabled="locked" />
               </ExtensionFormField>
-              <ExtensionFormField :label="t('group')" :name="`${name}.group`" :error="fieldError(`${name}.group`)" required>
+              <ExtensionFormField :label="t('group')" :name="`${name}.group`" :error="fieldError(`${name}.group`)" :description="t('groupHelp')" required>
                 <ExtensionInput v-model="local[name].group" type="number" :min="0" :max="32" :disabled="locked" />
               </ExtensionFormField>
-            </template>
+            </div>
           </template>
         </div>
       </section>
@@ -119,15 +125,25 @@ watch(model, value => {
         <h4 class="text-sm font-semibold">
           {{ t('preview') }}
         </h4>
-        <p v-if="preview" class="font-mono text-lg">
-          {{ preview }}
+        <p v-if="preview.status === 'success'" class="font-mono text-lg">
+          {{ preview.number }}
         </p>
-        <p v-if="!result.success" id="numbering-error" role="alert" class="text-sm text-error">
-          {{ configurationError }}
-        </p>
-        <p v-else-if="!preview" class="text-sm text-muted">
-          {{ configurationError }}
-        </p>
+        <ExtensionAlert
+          v-else
+          id="numbering-error"
+          role="alert"
+          :color="preview.status === 'error' ? 'error' : 'warning'"
+          :variant="preview.status === 'warning' ? 'solid' : 'soft'"
+          :icon="preview.status === 'error' ? 'i-lucide-circle-alert' : 'i-lucide-triangle-alert'"
+          :title="t(preview.status === 'error' ? 'previewErrorTitle' : 'previewWarningTitle')">
+          <template #description>
+            <ul class="list-disc space-y-1 pl-4">
+              <li v-for="reason in preview.reasons" :key="reason">
+                {{ reason }}
+              </li>
+            </ul>
+          </template>
+        </ExtensionAlert>
         <p class="text-sm text-muted">
           {{ t('previewHelp') }}
         </p>
@@ -135,3 +151,9 @@ watch(model, value => {
     </div>
   </div>
 </template>
+
+<style scoped>
+.numbering-extraction-settings {
+  grid-column: 1 / -1;
+}
+</style>

@@ -1,6 +1,6 @@
 import { sql } from 'kysely'
 import { createGcsExtensionUserError, type GcsAgreementNumberProvider } from '@gcs-ssc/extensions/server'
-import { parseConfig, PIECES, renderNumber } from '../shared/config'
+import { parseConfig, PIECES, renderNumber } from '../shared/config.ts'
 
 /**
  * Uses only extension-owned storage and the transaction explicitly supplied by the host.

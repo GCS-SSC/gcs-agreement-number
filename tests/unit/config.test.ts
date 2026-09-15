@@ -31,8 +31,8 @@ describe('number format', () => {
     expect(ConfigSchema.safeParse({ ...defaultConfig(), body: { type: 'sequence', start, increment: '1', width: 5 } }).success).toBe(false)
   })
   it.each([
-    ['whole', '2026-04-01'], ['year', '2026'], ['year2', '26'], ['substring', '26'],
-    ['regex', '2026'], ['upper', '2026-04-01'], ['lower', '2026-04-01']
+    ['whole', '2026-04-01'], ['substring', '26'],
+    ['regex', '26'], ['upper', '2026-04-01'], ['lower', '2026-04-01']
   ])('extracts %s', (transform, expected) => {
     expect(renderVariable(variable({ transform, offset: 2 }), sources)).toBe(expected)
   })
@@ -82,4 +82,16 @@ it('requires an appropriate business field for independently scoped counters', (
     const config = { ...defaultConfig(), counterScope: 'stream', prefix: defaultPiece('sequence'), [name]: variable({ field: 'stream.id', transform: 'whole' }) }
     expect(ConfigSchema.safeParse(config).success).toBe(true)
   }
+})
+
+it.each([['year', '2026'], ['year2', '26']])('normalizes saved %s extraction to regex without changing output', (transform, expected) => {
+  const saved = { ...defaultConfig(), suffix: variable({ transform }) }
+  expect(ConfigSchema.safeParse(saved).success).toBe(false)
+  const normalized = parseConfig(saved)
+  expect(normalized.suffix).toMatchObject({ transform: 'regex', group: 1 })
+  expect(renderNumber(normalized, sources, { body: '1' })).toBe(`AGR-00001${expected}`)
+  for (const source of ['not-a-date', '2026-04-01extra', '2026']) {
+    expect(() => renderNumber(normalized, { ...sources, 'agreement.startDate': source }, { body: '1' })).toThrow()
+  }
+  expect(saved.suffix).toMatchObject({ transform })
 })

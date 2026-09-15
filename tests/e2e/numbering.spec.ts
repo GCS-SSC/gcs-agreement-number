@@ -124,6 +124,41 @@ test('configures bilingual numbering and creates a generated agreement through t
   await modal.getByRole('combobox', { name: /Source field/ }).click()
   await page.getByRole('option', { name: 'Program · ID', exact: true }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)
+  for (const [option, firstLabel, secondLabel] of [
+    ['Substring', 'Starting position', 'Character count'],
+    ['Regular expression capture', 'Regular expression', 'Capture group']
+  ]) {
+    const extraction = modal.getByRole('combobox', { name: /Extraction/ })
+    await extraction.click()
+    await page.getByRole('option', { name: option, exact: true }).click()
+    await expect(page.getByRole('listbox')).toHaveCount(0)
+    const settings = modal.locator('.numbering-extraction-settings')
+    const first = settings.getByLabel(new RegExp(firstLabel!))
+    const second = settings.getByLabel(new RegExp(secondLabel!))
+    await expect(first).toBeVisible()
+    await expect(second).toBeVisible()
+    const extractionBox = await extraction.boundingBox()
+    const rowBox = await settings.boundingBox()
+    const firstBox = await first.boundingBox()
+    const secondBox = await second.boundingBox()
+    expect(rowBox!.y).toBeGreaterThan(extractionBox!.y + extractionBox!.height)
+    expect(secondBox!.x).toBeGreaterThan(firstBox!.x)
+    expect(Math.abs(firstBox!.y - secondBox!.y)).toBeLessThan(25)
+    if (option === 'Regular expression capture') {
+      await second.fill('0')
+      await first.fill('[')
+      await expect(modal.locator('#numbering-error')).toContainText('This configuration cannot generate a valid number')
+      await expect(modal.locator('#numbering-error')).toContainText('regular expression is invalid')
+      await first.fill('^ZZZ')
+      await expect(modal.locator('#numbering-error')).toContainText('Unable to confirm this configuration with sample values')
+      await expect(modal.locator('#numbering-error')).toContainText('does not match the sample “12”')
+      await expect(modal.locator('#numbering-error')).toHaveClass(/bg-warning/)
+      await expect(modal.locator('#numbering-error')).toHaveClass(/text-inverted/)
+      await first.fill('^[0-9]+')
+      await expect(modal.locator('#numbering-error')).toHaveCount(0)
+      await expect(modal.getByText('1200001', { exact: true })).toBeVisible()
+    }
+  }
   await modal.getByRole('combobox', { name: /Extraction/ }).click()
   await page.getByRole('option', { name: 'Entire value', exact: true }).click()
   await expect(page.getByRole('listbox')).toHaveCount(0)

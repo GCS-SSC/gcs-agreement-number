@@ -1,5 +1,5 @@
 import { createGcsExtensionUserError, defineGcsExtensionNitroPlugin, registerGcsExtensionConfigurationGuard, type GcsExtensionConfigurationGuardContext } from '@gcs-ssc/extensions/server'
-import { ConfigSchema, parseConfig } from '../../shared/config'
+import { ConfigSchema, parseConfig } from '../../shared/config.ts'
 
 /**
  *

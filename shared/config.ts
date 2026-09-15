@@ -4,7 +4,7 @@ import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources } from '@gc
 
 export const PIECES = ['prefix', 'body', 'suffix'] as const
 export const COUNTER_SCOPES = ['agency', 'program', 'stream'] as const
-export const TRANSFORMS = ['whole', 'year', 'year2', 'substring', 'upper', 'lower', 'regex'] as const
+export const TRANSFORMS = ['whole', 'substring', 'upper', 'lower', 'regex'] as const
 const integer = z.string().regex(/^[1-9][0-9]{0,14}$/, { error: 'validation.sequence' })
 const bounded = (min: number, max: number) => z.union([z.number(), z.string().trim().min(1)]).transform(Number).pipe(z.number().int().min(min).max(max))
 export const PieceSchema = z.discriminatedUnion('type', [
@@ -54,7 +54,7 @@ export type NumberPiece = z.infer<typeof PieceSchema>
 export const defaultPiece = (type: NumberPiece['type']): NumberPiece => {
   if (type === 'fixed') return { type, value: '' }
   if (type === 'sequence') return { type, start: '1', increment: '1', width: 5 }
-  return { type, field: 'agreement.startDate', transform: 'year2', offset: 0, length: 2, pattern: '^([0-9]{4})', group: 1 }
+  return { type, field: 'agreement.startDate', transform: 'regex', offset: 0, length: 2, pattern: '^[0-9]{2}([0-9]{2})-[0-9]{2}-[0-9]{2}$', group: 1 }
 }
 export const defaultConfig = (): NumberConfig => ({
   version: 2, counterScope: 'agency',
@@ -68,9 +68,17 @@ export const defaultConfig = (): NumberConfig => ({
 export const parseConfig = (value: unknown): NumberConfig => {
   if (value && typeof value === 'object' && !Array.isArray(value)) {
     if (Object.keys(value).length === 0) return defaultConfig()
+    // Saved year transforms have an equivalent regex, including their calendar-shape check.
+    value = Object.fromEntries(Object.entries(value).map(([key, piece]) => {
+      if (!PIECES.includes(key as typeof PIECES[number]) || !piece || typeof piece !== 'object'
+        || piece.type !== 'variable' || (piece.transform !== 'year' && piece.transform !== 'year2')) return [key, piece]
+      return [key, { ...piece, transform: 'regex', group: 1, pattern: piece.transform === 'year'
+        ? '^([0-9]{4})-[0-9]{2}-[0-9]{2}$'
+        : '^[0-9]{2}([0-9]{2})-[0-9]{2}-[0-9]{2}$' }]
+    }))
     // Previous agency formats were valid only with inheritance disabled. Keep their
     // stream counters until a Manager explicitly selects another scope.
-    if ('version' in value && value.version === 1 && 'inheritAgency' in value && value.inheritAgency === false) {
+    if (value && typeof value === 'object' && 'version' in value && value.version === 1 && 'inheritAgency' in value && value.inheritAgency === false) {
       return StoredConfigSchema.parse({ ...value, version: 2, counterScope: 'stream' })
     }
   }
@@ -86,10 +94,7 @@ export const renderVariable = (piece: Extract<NumberPiece, { type: 'variable' }>
   const source = sources[piece.field]
   if (typeof source !== 'string' || !source.length || source.length > 4096) throw new Error('Missing or oversized source')
   let value = source
-  if (piece.transform === 'year' || piece.transform === 'year2') {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(source)) throw new Error('Not a calendar date')
-    value = piece.transform === 'year' ? source.slice(0, 4) : source.slice(2, 4)
-  } else if (piece.transform === 'substring') value = Array.from(source).slice(piece.offset, piece.offset + piece.length).join('')
+  if (piece.transform === 'substring') value = Array.from(source).slice(piece.offset, piece.offset + piece.length).join('')
   else if (piece.transform === 'upper') value = source.toUpperCase()
   else if (piece.transform === 'lower') value = source.toLowerCase()
   else if (piece.transform === 'regex') {
