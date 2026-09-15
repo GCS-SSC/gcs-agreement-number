@@ -15,23 +15,23 @@ beforeEach(() => {
 })
 describe('independent numbering configuration UI', () => {
   it('renders ordered sections and sample without allocating or calling an API', () => {
-    const wrapper = mount(Config, { props: { modelValue: {}, streamId: '1' } })
+    const wrapper = mount(Config, { props: { modelValue: {}, agencyId: '1' } })
     expect(wrapper.findAll('h4').map(node => node.text())).toEqual(['Prefix', 'Body', 'Suffix', 'Example number'])
     expect(wrapper.text()).toContain('AGR-00001')
     expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toMatchObject(defaultConfig())
   })
   it('emits changed pieces and follows external replacement and locale changes', async () => {
-    const wrapper = mount(Config, { props: { modelValue: defaultConfig(), streamId: '1' } })
-    wrapper.findAllComponents(ExtensionSelectMenu)[0]!.vm.$emit('update:modelValue', 'variable')
+    const wrapper = mount(Config, { props: { modelValue: defaultConfig(), agencyId: '1' } })
+    wrapper.findAllComponents(ExtensionSelectMenu)[1]!.vm.$emit('update:modelValue', 'variable')
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('Authorized')
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({ prefix: { type: 'variable' } })
-    await wrapper.setProps({ modelValue: { ...defaultConfig(), inheritAgency: true } })
-    expect(wrapper.text()).toContain('This stream uses the agency format')
-    expect(wrapper.findAll('h4')).toHaveLength(0)
+    await wrapper.setProps({ modelValue: { ...defaultConfig(), counterScope: 'program' } })
+    expect(wrapper.findAllComponents(ExtensionSelectMenu)[0]!.vm.$attrs.modelValue).toBe('program')
     locale.value = 'fr'
     await wrapper.vm.$nextTick()
-    expect(wrapper.text()).toContain('Ce volet utilise le format')
+    expect(wrapper.findAllComponents(ExtensionFormField)[0]!.vm.$attrs.label).toBe('Portée du compteur')
+    expect(wrapper.findAll('h4')).toHaveLength(4)
   })
   it('exposes conditional regex and substring controls, errors and disabled state', async () => {
     const config = { ...defaultConfig(), suffix: { ...defaultPiece('variable'), transform: 'regex' } }
@@ -46,7 +46,7 @@ describe('independent numbering configuration UI', () => {
   it('does not report a sample mismatch as a configuration validation error', async () => {
     const wrapper = mount(Config, { props: { modelValue: { ...defaultConfig(), suffix: { ...defaultPiece('variable'), transform: 'regex', pattern: '^ZZZ', group: 0 } } } })
     expect(wrapper.find('[role="alert"]').exists()).toBe(false)
-    wrapper.findAllComponents(ExtensionSelectMenu)[0]!.vm.$emit('update:modelValue', null)
+    wrapper.findAllComponents(ExtensionSelectMenu)[1]!.vm.$emit('update:modelValue', null)
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('No number is reserved')
   })
@@ -59,7 +59,7 @@ describe('independent numbering configuration UI', () => {
     }
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({ prefix: { value: 'ID-' }, body: { start: '27', increment: '3', width: '4' } })
     expect(wrapper.text()).toContain('ID-0027')
-    wrapper.findAllComponents(ExtensionSelectMenu)[0]!.vm.$emit('update:modelValue', 'sequence')
+    wrapper.findAllComponents(ExtensionSelectMenu)[1]!.vm.$emit('update:modelValue', 'sequence')
     await wrapper.vm.$nextTick()
     expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({ prefix: { type: 'sequence', start: '1' } })
   })
@@ -77,4 +77,16 @@ it('clears hidden invalid extraction settings when changing transform', async ()
   expect(ConfigSchema.safeParse(changed).success).toBe(true)
   expect(changed).toMatchObject({ suffix: { field: 'agreement.startDate', transform: 'year2' } })
   expect(wrapper.find('[role="alert"]').exists()).toBe(false)
+})
+
+it('requires scope, emits changes, and restores saved legacy stream scope', async () => {
+  const wrapper = mount(Config, { props: { modelValue: { ...defaultConfig(), version: 1, inheritAgency: false } } })
+  expect(wrapper.emitted('update:modelValue')?.[0]?.[0]).toMatchObject({ version: 2, counterScope: 'stream' })
+  const scope = wrapper.findAllComponents(ExtensionSelectMenu)[0]!
+  scope.vm.$emit('update:modelValue', 'program')
+  await wrapper.vm.$nextTick()
+  expect(wrapper.emitted('update:modelValue')?.at(-1)?.[0]).toMatchObject({ counterScope: 'program' })
+  scope.vm.$emit('update:modelValue', null)
+  await wrapper.vm.$nextTick()
+  expect(wrapper.find('[role="alert"]').exists()).toBe(true)
 })

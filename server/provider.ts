@@ -1,6 +1,6 @@
 import { sql } from 'kysely'
 import { createGcsExtensionUserError, type GcsAgreementNumberProvider } from '@gcs-ssc/extensions/server'
-import { effectiveConfig, PIECES, renderNumber } from '../shared/config'
+import { parseConfig, PIECES, renderNumber } from '../shared/config'
 
 /**
  * Uses only extension-owned storage and the transaction explicitly supplied by the host.
@@ -9,15 +9,16 @@ import { effectiveConfig, PIECES, renderNumber } from '../shared/config'
  */
 const provider: GcsAgreementNumberProvider = async context => {
   try {
-    const config = effectiveConfig(context.config, context.agencyConfig)
+    const config = parseConfig(context.agencyConfig)
+    const scopeId = { agency: context.agencyId, program: context.programId, stream: context.streamId }[config.counterScope]
     const sequences: Partial<Record<typeof PIECES[number], string>> = {}
     for (const name of PIECES) {
       const piece = config[name]
       if (piece.type !== 'sequence') continue
       const result = await sql<{ value: string }>`
-        INSERT INTO extensions.agreement_number_counters (stream_id, piece, next_value)
-        VALUES (${context.streamId}, ${name}, CAST(${piece.start} AS numeric) + CAST(${piece.increment} AS numeric))
-        ON CONFLICT (stream_id, piece) DO UPDATE
+        INSERT INTO extensions.agreement_number_counters (scope, scope_id, piece, next_value)
+        VALUES (${config.counterScope}, ${scopeId}, ${name}, CAST(${piece.start} AS numeric) + CAST(${piece.increment} AS numeric))
+        ON CONFLICT (scope, scope_id, piece) DO UPDATE
           SET next_value = extensions.agreement_number_counters.next_value + CAST(${piece.increment} AS numeric)
         RETURNING (next_value - CAST(${piece.increment} AS numeric))::text AS value
       `.execute(context.db)

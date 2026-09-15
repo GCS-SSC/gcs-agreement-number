@@ -1,17 +1,21 @@
 import { describe, expect, it } from 'vitest'
 import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources } from '@gcs-ssc/extensions'
-import { ConfigSchema, defaultConfig, defaultPiece, effectiveConfig, parseConfig, renderNumber, renderVariable, type NumberPiece } from '../../shared/config'
+import { ConfigSchema, defaultConfig, defaultPiece, parseConfig, renderNumber, renderVariable, type NumberPiece } from '../../shared/config'
 import { messages } from '../../i18n/messages'
 
 const sources = Object.fromEntries(GCS_AGREEMENT_NUMBER_FIELDS.map(field => [field, '2026-04-01'])) as GcsAgreementNumberSources
 const variable = (patch = {}): Extract<NumberPiece, { type: 'variable' }> => ({ ...defaultPiece('variable'), ...patch }) as Extract<NumberPiece, { type: 'variable' }>
 describe('number format', () => {
-  it('normalizes only unauthored configuration and resolves explicit inheritance', () => {
+  it('normalizes empty and previously authored agency configurations', () => {
     expect(parseConfig({})).toEqual(defaultConfig())
-    expect(effectiveConfig({}, {})).toEqual(defaultConfig())
-    expect(effectiveConfig({ ...defaultConfig(), inheritAgency: true }, {})).toEqual(defaultConfig())
-    expect(() => effectiveConfig({ ...defaultConfig(), inheritAgency: true }, { ...defaultConfig(), inheritAgency: true })).toThrow()
-    for (const value of [null, undefined, { version: 0 }, [], { prefix: {} }]) expect(() => parseConfig(value)).toThrow()
+    const { counterScope, ...pieces } = defaultConfig()
+    expect(counterScope).toBe('agency')
+    expect(parseConfig({ ...pieces, version: 1, inheritAgency: false })).toEqual({ ...defaultConfig(), counterScope: 'stream' })
+    for (const value of [null, undefined, { version: 0 }, [], { prefix: {} }, { ...pieces, version: 1, inheritAgency: true }]) expect(() => parseConfig(value)).toThrow()
+  })
+  it('requires a recognized counter scope', () => {
+    for (const counterScope of ['agency', 'program', 'stream']) expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope, prefix: variable({ field: 'stream.id', transform: 'whole' }) }).success).toBe(true)
+    for (const counterScope of ['', null, undefined, 'global']) expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope }).success).toBe(false)
   })
   it('requires a sequence in any position and enforces minimum complete length', () => {
     const config = defaultConfig()
@@ -65,4 +69,17 @@ describe('number format', () => {
     expect(Object.keys(messages.en).sort()).toEqual(Object.keys(messages.fr).sort())
     for (const field of GCS_AGREEMENT_NUMBER_FIELDS) expect(messages.fr[field]).toBeTruthy()
   })
+})
+
+it('requires an appropriate business field for independently scoped counters', () => {
+  for (const counterScope of ['program', 'stream']) {
+    expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope }).success).toBe(false)
+    expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope, prefix: variable({ field: 'agency.id' }) }).success).toBe(false)
+  }
+  expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope: 'program', prefix: variable({ field: 'program.id', transform: 'whole' }) }).success).toBe(true)
+  expect(ConfigSchema.safeParse({ ...defaultConfig(), counterScope: 'stream', prefix: variable({ field: 'program.id' }) }).success).toBe(false)
+  for (const name of ['prefix', 'body', 'suffix']) {
+    const config = { ...defaultConfig(), counterScope: 'stream', prefix: defaultPiece('sequence'), [name]: variable({ field: 'stream.id', transform: 'whole' }) }
+    expect(ConfigSchema.safeParse(config).success).toBe(true)
+  }
 })

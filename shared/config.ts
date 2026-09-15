@@ -3,6 +3,7 @@ import { RE2JS } from 're2js'
 import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources } from '@gcs-ssc/extensions'
 
 export const PIECES = ['prefix', 'body', 'suffix'] as const
+export const COUNTER_SCOPES = ['agency', 'program', 'stream'] as const
 export const TRANSFORMS = ['whole', 'year', 'year2', 'substring', 'upper', 'lower', 'regex'] as const
 const integer = z.string().regex(/^[1-9][0-9]{0,14}$/, { error: 'validation.sequence' })
 const bounded = (min: number, max: number) => z.union([z.number(), z.string().trim().min(1)]).transform(Number).pipe(z.number().int().min(min).max(max))
@@ -14,11 +15,10 @@ export const PieceSchema = z.discriminatedUnion('type', [
     offset: bounded(0, 4096), length: bounded(1, 15), pattern: z.string().max(256), group: bounded(0, 32)
   })
 ])
-export const ConfigSchema = z.object({
-  version: z.literal(1), inheritAgency: z.boolean(),
+const StoredConfigSchema = z.object({
+  version: z.literal(2), counterScope: z.enum(COUNTER_SCOPES),
   prefix: PieceSchema, body: PieceSchema, suffix: PieceSchema
 }).superRefine((config, ctx) => {
-  if (config.inheritAgency) return
   if (!PIECES.some(piece => config[piece].type === 'sequence')) {
     ctx.addIssue({ code: 'custom', path: ['body'], message: 'validation.sequence_required' })
   }
@@ -35,6 +35,15 @@ export const ConfigSchema = z.object({
   }
   if (minimumLength > 15) ctx.addIssue({ code: 'custom', path: ['body'], message: 'validation.length' })
 })
+export const ConfigSchema = StoredConfigSchema.superRefine((config, ctx) => {
+  if (config.counterScope === 'agency') return
+  const distinguished = PIECES.some(name => {
+    const piece = config[name]
+    return piece.type === 'variable' && (piece.field.startsWith('stream.')
+      || (config.counterScope === 'program' && piece.field.startsWith('program.')))
+  })
+  if (!distinguished) ctx.addIssue({ code: 'custom', path: ['counterScope'], message: 'validation.differentiator' })
+})
 export type NumberConfig = z.infer<typeof ConfigSchema>
 export type NumberPiece = z.infer<typeof PieceSchema>
 /**
@@ -48,7 +57,7 @@ export const defaultPiece = (type: NumberPiece['type']): NumberPiece => {
   return { type, field: 'agreement.startDate', transform: 'year2', offset: 0, length: 2, pattern: '^([0-9]{4})', group: 1 }
 }
 export const defaultConfig = (): NumberConfig => ({
-  version: 1, inheritAgency: false,
+  version: 2, counterScope: 'agency',
   prefix: { type: 'fixed', value: 'AGR-' }, body: defaultPiece('sequence'), suffix: defaultPiece('fixed')
 })
 /**
@@ -56,21 +65,16 @@ export const defaultConfig = (): NumberConfig => ({
  * @param value - Persisted configuration or source value.
  * @returns The validated or generated result.
  */
-export const parseConfig = (value: unknown): NumberConfig => ConfigSchema.parse(
-  value && typeof value === 'object' && !Array.isArray(value) && Object.keys(value).length === 0 ? defaultConfig() : value
-)
-/**
- *
- * @param stream - Stream configuration.
- * @param agency - Agency defaults.
- * @returns The validated or generated result.
- */
-export const effectiveConfig = (stream: unknown, agency: unknown): NumberConfig => {
-  const config = parseConfig(stream)
-  if (!config.inheritAgency) return config
-  const inherited = parseConfig(agency)
-  if (inherited.inheritAgency) throw new Error('Agency configuration cannot inherit')
-  return inherited
+export const parseConfig = (value: unknown): NumberConfig => {
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    if (Object.keys(value).length === 0) return defaultConfig()
+    // Previous agency formats were valid only with inheritance disabled. Keep their
+    // stream counters until a Manager explicitly selects another scope.
+    if ('version' in value && value.version === 1 && 'inheritAgency' in value && value.inheritAgency === false) {
+      return StoredConfigSchema.parse({ ...value, version: 2, counterScope: 'stream' })
+    }
+  }
+  return ConfigSchema.parse(value)
 }
 /**
  * Calendar strings are sliced directly; no timezone-dependent Date conversion occurs.

@@ -1,5 +1,5 @@
 import { createGcsExtensionUserError, defineGcsExtensionNitroPlugin, registerGcsExtensionConfigurationGuard, type GcsExtensionConfigurationGuardContext } from '@gcs-ssc/extensions/server'
-import { parseConfig } from '../../shared/config'
+import { ConfigSchema, parseConfig } from '../../shared/config'
 
 /**
  *
@@ -8,14 +8,14 @@ import { parseConfig } from '../../shared/config'
 export const validateConfiguration = (context: GcsExtensionConfigurationGuardContext): void => {
   if (context.targetExtensionKey !== 'gcs-agreement-number' || context.config === undefined) return
   try {
-    const config = parseConfig(context.config)
-    if (context.scope === 'agency' && config.inheritAgency) throw new Error('Invalid inheritance')
+    if (context.scope !== 'agency') throw new Error('Agency configuration required')
+    ConfigSchema.parse(parseConfig(context.config))
   } catch {
     throw createGcsExtensionUserError({
       statusCode: 400, code: 'AGREEMENT_NUMBER_CONFIGURATION_INVALID',
       message: {
-        en: 'Provide a valid prefix, body and suffix, including at least one sequence. Check the extraction rules and the 15-character limit.',
-        fr: 'Fournissez un préfixe, un corps et un suffixe valides, dont au moins une séquence. Vérifiez les règles d’extraction et la limite de 15 caractères.'
+        en: 'Provide a valid prefix, body and suffix, including at least one sequence. Program counters require a program or stream field; stream counters require a stream field. Check the extraction rules and the 15-character limit.',
+        fr: 'Fournissez un préfixe, un corps et un suffixe valides, dont au moins une séquence. Un compteur de programme exige un champ de programme ou de volet; un compteur de volet exige un champ de volet. Vérifiez les règles d’extraction et la limite de 15 caractères.'
       }
     })
   }

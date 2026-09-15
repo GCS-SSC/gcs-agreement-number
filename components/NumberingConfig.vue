@@ -1,23 +1,27 @@
 <script setup lang="ts">
 import { computed, ref, watch, type Ref } from 'vue'
 import { GCS_AGREEMENT_NUMBER_FIELDS, type GcsAgreementNumberSources, type GcsExtensionJsonConfig } from '@gcs-ssc/extensions'
-import { ExtensionCheckbox, ExtensionFormField, ExtensionInput, ExtensionSelectMenu, useExtensionI18n } from '@gcs-ssc/extensions/ui'
-import { ConfigSchema, defaultConfig, defaultPiece, PIECES, TRANSFORMS, renderNumber, type NumberConfig, type NumberPiece } from '../shared/config'
+import { ExtensionFormField, ExtensionInput, ExtensionSelectMenu, useExtensionI18n } from '@gcs-ssc/extensions/ui'
+import { COUNTER_SCOPES, ConfigSchema, parseConfig, defaultConfig, defaultPiece, PIECES, TRANSFORMS, renderNumber, type NumberConfig, type NumberPiece } from '../shared/config'
 import { messages } from '../i18n/messages'
 
-const { streamId, disabled = false, readOnly = false } = defineProps<{ streamId?: string; agencyId?: string; disabled?: boolean; readOnly?: boolean }>()
+const { disabled = false, readOnly = false } = defineProps<{ streamId?: string; agencyId?: string; disabled?: boolean; readOnly?: boolean }>()
 const model = defineModel<GcsExtensionJsonConfig>({ required: true })
 const { t } = useExtensionI18n(messages)
-const copyConfig = (value: GcsExtensionJsonConfig): NumberConfig => JSON.parse(JSON.stringify({ ...defaultConfig(), ...value })) as NumberConfig
+const copyConfig = (value: GcsExtensionJsonConfig): NumberConfig => {
+  try { return parseConfig(value) } catch { return JSON.parse(JSON.stringify({ ...defaultConfig(), ...value })) as NumberConfig }
+}
 const local: Ref<NumberConfig> = ref(copyConfig(model.value))
 const locked = computed(() => disabled || readOnly)
 const result = computed(() => ConfigSchema.safeParse(local.value))
-const fieldError = (path: string) => result.value.success ? undefined : result.value.error.issues.some(issue => issue.path.join('.') === path) ? t('invalid') : undefined
+const configurationError = computed(() => !result.value.success && result.value.error.issues.some(issue => issue.message === 'validation.differentiator') ? t('differentiator') : t('invalid'))
+const fieldError = (path: string) => result.value.success ? undefined : result.value.error.issues.some(issue => issue.path.join('.') === path) ? configurationError.value : undefined
 const options = computed(() => ['fixed', 'variable', 'sequence'].map(value => ({ value, label: t(value as NumberPiece['type']) })))
+const scopes = computed(() => COUNTER_SCOPES.map(value => ({ value, label: t(value) })))
 const fields = computed(() => GCS_AGREEMENT_NUMBER_FIELDS.map(value => ({ value, label: t(value) })))
 const transforms = computed(() => TRANSFORMS.map(value => ({ value, label: t(value) })))
 const preview = computed(() => {
-  if (!result.value.success || result.value.data.inheritAgency) return null
+  if (!result.value.success) return null
   const sources = Object.fromEntries(GCS_AGREEMENT_NUMBER_FIELDS.map(field => [field, field.endsWith('Date') ? '2026-04-01' : field.endsWith('.id') ? '12' : 'ABC'])) as GcsAgreementNumberSources
   const sequences = Object.fromEntries(PIECES.map(name => [name, local.value[name].type === 'sequence' ? local.value[name].start : '1']))
   try {
@@ -55,14 +59,11 @@ watch(model, value => {
           {{ t('description') }}
         </p>
       </div>
-      <ExtensionFormField v-if="streamId" :label="t('inherit')" name="inheritAgency" :required="false">
-        <ExtensionCheckbox v-model="local.inheritAgency" :label="t('inherit')" :disabled="locked" />
+      <ExtensionFormField :label="t('counterScope')" name="counterScope" :description="t('scopeHelp')" :error="fieldError('counterScope')" required>
+        <ExtensionSelectMenu v-model="local.counterScope" :items="scopes" value-key="value" :disabled="locked" />
       </ExtensionFormField>
-      <p v-if="local.inheritAgency" class="text-sm text-muted">
-        {{ t('inheritedHelp') }}
-      </p>
     </section>
-    <template v-if="!local.inheritAgency">
+    <div class="space-y-6">
       <section v-for="name in PIECES" :key="name" class="space-y-4 border-t border-default pt-5" :aria-describedby="result.success ? 'numbering-instructions' : 'numbering-instructions numbering-error'">
         <h4 class="text-base font-semibold text-highlighted">
           {{ t(name) }}
@@ -112,7 +113,7 @@ watch(model, value => {
         </div>
       </section>
       <p class="text-sm text-muted">
-        {{ t('counterHelp') }}
+        {{ t('counterHelp') }} {{ t('differentiator') }}
       </p>
       <section class="space-y-2 border-t border-default pt-5" aria-live="polite">
         <h4 class="text-sm font-semibold">
@@ -122,15 +123,15 @@ watch(model, value => {
           {{ preview }}
         </p>
         <p v-if="!result.success" id="numbering-error" role="alert" class="text-sm text-error">
-          {{ t('invalid') }}
+          {{ configurationError }}
         </p>
         <p v-else-if="!preview" class="text-sm text-muted">
-          {{ t('invalid') }}
+          {{ configurationError }}
         </p>
         <p class="text-sm text-muted">
           {{ t('previewHelp') }}
         </p>
       </section>
-    </template>
+    </div>
   </div>
 </template>
