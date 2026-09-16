@@ -198,6 +198,14 @@ test('configures bilingual numbering and creates a generated agreement through t
   expect(response.status(), await response.text()).toBe(200)
   expect(response.request().postDataJSON()).not.toHaveProperty('egcs_fc_agreementnumber')
   const agreement = await response.json()
+  const audit = await page.request.get('/api/admin/audit/events', { params: { requestId: response.headers()['x-request-id']! } })
+  expect(audit.ok(), await audit.text()).toBe(true)
+  const counterEvents = (await audit.json()).items.filter((event: { table_name: string }) => event.table_name === 'extensions.agreement_number_counters')
+  expect(counterEvents.length).toBeGreaterThan(0)
+  for (const event of counterEvents) {
+    expect(event.scope_type).toBe('agency')
+    expect(event.agency_ids).toEqual([String(stream.agency_id)])
+  }
   expect(agreement.egcs_fc_agreementnumber).toBe(`${stream.program_id}00042`)
   await expect(page).toHaveURL(new RegExp(`/en/agreements/${agreement.id}$`))
   await page.reload()

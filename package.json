@@ -9,10 +9,11 @@
     "typecheck": "vue-tsc --noEmit",
     "test:integration:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:e2e": "playwright test",
-    "test:e2e:managed": "bun scripts/test-e2e-managed.ts"
+    "test:e2e:managed": "bun scripts/test-e2e-managed.ts",
+    "test:audit": "vitest run --config vitest.audit.config.ts"
   },
   "dependencies": {
-    "@gcs-ssc/extensions": "^0.3.1",
+    "@gcs-ssc/extensions": "^0.3.2",
     "re2js": "^1.0.0",
     "kysely": "^0.28.11",
     "zod": "^4.3.6"
