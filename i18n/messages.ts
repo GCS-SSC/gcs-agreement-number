@@ -41,8 +41,8 @@ export const messages = defineGcsExtensionMessages({
   fr: {
     'title': 'Format du numéro d’entente', 'description': 'Composez le numéro dans l’ordre : préfixe, corps, suffixe. Incluez au moins une séquence. Le numéro complet doit contenir au plus 15 caractères.',
     'differentiator': 'Un compteur de programme exige un champ métier de programme ou de volet. Un compteur de volet exige un champ métier de volet.',
-    'counterScope': 'Portée du compteur', 'agency': 'Organisation', 'program': 'Programme', 'stream': 'Volet',
-    'scopeHelp': 'Choisissez les ententes qui partagent les compteurs. Ce format s’applique à toutes les ententes de l’organisation.', 'prefix': 'Préfixe', 'body': 'Corps', 'suffix': 'Suffixe', 'type': 'Type de partie',
+    'counterScope': 'Portée du compteur', 'agency': 'Organisme', 'program': 'Programme', 'stream': 'Volet',
+    'scopeHelp': 'Choisissez les ententes qui partagent les compteurs. Ce format s’applique à toutes les ententes de l’organisme.', 'prefix': 'Préfixe', 'body': 'Corps', 'suffix': 'Suffixe', 'type': 'Type de partie',
     'fixed': 'Texte fixe', 'variable': 'Champ métier', 'sequence': 'Séquence', 'value': 'Texte (peut être vide)', 'field': 'Champ source', 'transform': 'Extraction',
     'whole': 'Valeur entière', 'substring': 'Sous-chaîne', 'upper': 'Majuscules', 'lower': 'Minuscules', 'regex': 'Capture d’expression régulière',
     'start': 'Valeur initiale', 'increment': 'Incrément', 'width': 'Nombre minimal de chiffres', 'offset': 'Position initiale (à partir de zéro)', 'length': 'Nombre de caractères', 'pattern': 'Expression régulière', 'group': 'Groupe de capture (0 = correspondance complète)',
@@ -68,10 +68,10 @@ export const messages = defineGcsExtensionMessages({
     'agreement.title_en': 'Entente · Titre anglais', 'agreement.title_fr': 'Entente · Titre français',
     'agreement.startDate': 'Entente · Date de début autorisée', 'agreement.endDate': 'Entente · Date de fin autorisée',
     'agreement.financialSystemNumber': 'Entente · Numéro du système financier',
-    'agency.abbreviation_en': 'Organisation · Abréviation anglaise', 'agency.abbreviation_fr': 'Organisation · Abréviation française',
+    'agency.abbreviation_en': 'Organisme · Abréviation anglaise', 'agency.abbreviation_fr': 'Organisme · Abréviation française',
     'program.abbreviation_en': 'Programme · Abréviation anglaise', 'program.abbreviation_fr': 'Programme · Abréviation française',
     'stream.abbreviation_en': 'Volet · Abréviation anglaise', 'stream.abbreviation_fr': 'Volet · Abréviation française',
-    'agency.id': 'Organisation · ID', 'agency.name_en': 'Organisation · Nom anglais', 'agency.name_fr': 'Organisation · Nom français',
+    'agency.id': 'Organisme · ID', 'agency.name_en': 'Organisme · Nom anglais', 'agency.name_fr': 'Organisme · Nom français',
     'program.id': 'Programme · ID', 'program.name_en': 'Programme · Nom anglais', 'program.name_fr': 'Programme · Nom français',
     'stream.id': 'Volet · ID', 'stream.name_en': 'Volet · Nom anglais', 'stream.name_fr': 'Volet · Nom français'
   }
