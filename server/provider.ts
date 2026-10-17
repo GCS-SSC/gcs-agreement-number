@@ -1,3 +1,5 @@
+import { translateGcsExtensionMessage } from '@gcs-ssc/extensions'
+import { errorMessages } from '../i18n/errors.ts'
 import { sql } from 'kysely'
 import { createGcsExtensionUserError, type GcsAgreementNumberProvider } from '@gcs-ssc/extensions/server'
 import { parseConfig, PIECES, renderNumber } from '../shared/config.ts'
@@ -31,8 +33,8 @@ const provider: GcsAgreementNumberProvider = async context => {
     throw createGcsExtensionUserError({
       statusCode: 400, code: 'AGREEMENT_NUMBER_CONFIGURATION_INVALID',
       message: {
-        en: 'The numbering format could not produce a valid number. Check source values, extraction rules, sequence width, and the 15-character limit.',
-        fr: 'Le format de numérotation n’a pas produit de numéro valide. Vérifiez les valeurs sources, les règles d’extraction, la largeur de séquence et la limite de 15 caractères.'
+        en: translateGcsExtensionMessage(errorMessages, 'en', 'generationInvalid'),
+        fr: translateGcsExtensionMessage(errorMessages, 'fr', 'generationInvalid')
       }
     })
   }
