@@ -18,7 +18,7 @@ suite('PostgreSQL atomic counters', () => {
     // Fail rather than overwrite any pre-existing table; this suite owns its fresh database.
     await sql`CREATE SCHEMA IF NOT EXISTS extensions`.execute(db)
     await migration.up(db)
-    await sql`INSERT INTO extensions.agreement_number_counters (stream_id, piece, next_value) VALUES (999, 'body', 56)`.execute(db)
+    await sql`INSERT INTO extensions.gcs_agreement_number_counters (stream_id, piece, next_value) VALUES (999, 'body', 56)`.execute(db)
     await scopeMigration.up(db)
   })
   afterAll(async () => {

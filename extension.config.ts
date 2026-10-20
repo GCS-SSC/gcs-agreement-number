@@ -4,7 +4,7 @@ export default defineGcsExtension({
   // Host-managed configuration, KV and secrets keep their host ownership rules.
   auditOwnership: defineGcsAuditOwnership([
     {
-      table: 'extensions.agreement_number_counters',
+      table: 'extensions.gcs_agreement_number_counters',
       owner: {
         kind: 'switch',
         column: 'scope',

@@ -18,10 +18,10 @@ const provider: GcsAgreementNumberProvider = async context => {
       const piece = config[name]
       if (piece.type !== 'sequence') continue
       const result = await sql<{ value: string }>`
-        INSERT INTO extensions.agreement_number_counters (scope, scope_id, piece, next_value)
+        INSERT INTO extensions.gcs_agreement_number_counters (scope, scope_id, piece, next_value)
         VALUES (${config.counterScope}, ${scopeId}, ${name}, CAST(${piece.start} AS numeric) + CAST(${piece.increment} AS numeric))
         ON CONFLICT (scope, scope_id, piece) DO UPDATE
-          SET next_value = extensions.agreement_number_counters.next_value + CAST(${piece.increment} AS numeric)
+          SET next_value = extensions.gcs_agreement_number_counters.next_value + CAST(${piece.increment} AS numeric)
         RETURNING (next_value - CAST(${piece.increment} AS numeric))::text AS value
       `.execute(context.db)
       sequences[name] = result.rows[0]!.value

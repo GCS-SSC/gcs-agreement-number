@@ -6,7 +6,7 @@ const { verifyExtensionAuditContract } = await import(new URL(
 
 verifyExtensionAuditContract(extension, [
   {
-    'table': 'extensions.agreement_number_counters',
+    'table': 'extensions.gcs_agreement_number_counters',
     'row': {
       'id': '1',
       'scope': 'agency',
@@ -19,7 +19,7 @@ verifyExtensionAuditContract(extension, [
     ]
   },
   {
-    'table': 'extensions.agreement_number_counters',
+    'table': 'extensions.gcs_agreement_number_counters',
     'row': {
       'id': '2',
       'scope': 'program',
@@ -32,7 +32,7 @@ verifyExtensionAuditContract(extension, [
     ]
   },
   {
-    'table': 'extensions.agreement_number_counters',
+    'table': 'extensions.gcs_agreement_number_counters',
     'row': {
       'id': '3',
       'scope': 'stream',

@@ -1,3 +1,4 @@
+import { readFile } from 'node:fs/promises'
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { Kysely, sql, type Transaction } from 'kysely'
 import { KyselyPGlite } from 'kysely-pglite'
@@ -66,9 +67,44 @@ describe('transactional number allocation', () => {
     expect(await allocate('program')).toBe('S-00003')
     expect(await allocate('stream')).toBe('S-00002')
   })
+  it('creates only namespaced tables and bounded catalog identifiers from the final baseline', async () => {
+    const tables = await sql<{ name: string }>`SELECT relname AS name FROM pg_class WHERE relnamespace = 'extensions'::regnamespace`.execute(db)
+    expect(tables.rows.map(row => row.name)).toEqual(expect.arrayContaining([
+      'gcs_agreement_number_counters',
+      'gcs_agreement_number_counters_id_seq',
+      'gcs_agreement_number_counters_pkey',
+      'gcs_agreement_number_counters_uk_scope_piece'
+    ]))
+    for (const { name } of tables.rows) {
+      expect(name).toMatch(/^gcs_agreement_number_/)
+      expect(Buffer.byteLength(name)).toBeLessThanOrEqual(63)
+    }
+    const constraints = await sql<{ name: string }>`SELECT conname AS name FROM pg_constraint WHERE connamespace = 'extensions'::regnamespace`.execute(db)
+    expect(constraints.rows.map(row => row.name)).toEqual(expect.arrayContaining([
+      'gcs_agreement_number_counters_chk_scope',
+      'gcs_agreement_number_counters_chk_piece',
+      'gcs_agreement_number_counters_chk_next_value',
+      'gcs_agreement_number_counters_uk_scope_piece'
+    ]))
+    for (const { name } of constraints.rows) expect(Buffer.byteLength(name)).toBeLessThanOrEqual(63)
+    await expect(sql`INSERT INTO extensions.gcs_agreement_number_counters (scope, scope_id, piece, next_value) VALUES ('unknown', 3, 'body', 1)`.execute(db)).rejects.toMatchObject({ code: '23514' })
+    await expect(sql`INSERT INTO extensions.gcs_agreement_number_counters (scope, scope_id, piece, next_value) VALUES ('agency', 3, 'unknown', 1)`.execute(db)).rejects.toMatchObject({ code: '23514' })
+    await expect(sql`INSERT INTO extensions.gcs_agreement_number_counters (scope, scope_id, piece, next_value) VALUES ('agency', 3, 'body', 0)`.execute(db)).rejects.toMatchObject({ code: '23514' })
+  })
+  it('keeps declared identifiers within the PostgreSQL limit before catalog truncation', async () => {
+    for (const path of ['0001-counters.ts', '0002-counter-scope.ts']) {
+      const source = await readFile(new URL(`../../server/migrations/${path}`, import.meta.url), 'utf8')
+      const declaredNames = [...source.matchAll(/(?:CREATE TABLE extensions\.|CONSTRAINT )([a-z_]+)/g)].map(([, name = '']) => name)
+      expect(declaredNames.length).toBeGreaterThan(0)
+      for (const name of declaredNames) {
+        expect(name).toMatch(/^gcs_agreement_number_/)
+        expect(Buffer.byteLength(name)).toBeLessThanOrEqual(63)
+      }
+    }
+  })
   it('upgrades existing stream counters without resetting their next value', async () => {
     await scopeMigration.down!(db)
-    await sql`INSERT INTO extensions.agreement_number_counters (stream_id, piece, next_value) VALUES (3, 'body', 71)`.execute(db)
+    await sql`INSERT INTO extensions.gcs_agreement_number_counters (stream_id, piece, next_value) VALUES (3, 'body', 71)`.execute(db)
     await scopeMigration.up(db)
     expect(await db.transaction().execute(trx => provider(context(trx, { agencyConfig: { ...defaultConfig(), version: 1, inheritAgency: false } })))).toBe('AGR-00071')
     await db.transaction().execute(trx => provider(context(trx)))
@@ -78,7 +114,7 @@ describe('transactional number allocation', () => {
     const config = { ...defaultConfig(), suffix: defaultPiece('variable') }
     await expect(db.transaction().execute(trx => provider(context(trx, { agencyConfig: config, sources: {} })))).rejects.toMatchObject({ code: 'AGREEMENT_NUMBER_CONFIGURATION_INVALID', localizedMessage: { en: expect.any(String), fr: expect.any(String) } })
     expect(await db.transaction().execute(trx => provider(context(trx)))).toBe('AGR-00001')
-    await sql`UPDATE extensions.agreement_number_counters SET next_value = 999999999999999`.execute(db)
+    await sql`UPDATE extensions.gcs_agreement_number_counters SET next_value = 999999999999999`.execute(db)
     await expect(db.transaction().execute(trx => provider(context(trx)))).rejects.toMatchObject({ code: 'AGREEMENT_NUMBER_CONFIGURATION_INVALID' })
   })
   it('preserves database errors and supports migration down', async () => {

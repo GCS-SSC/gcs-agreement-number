@@ -208,7 +208,7 @@ test('configures bilingual numbering and creates a generated agreement through t
   const agreement = await response.json()
   const audit = await page.request.get('/api/admin/audit/events', { params: { requestId: response.headers()['x-request-id']! } })
   expect(audit.ok(), await audit.text()).toBe(true)
-  const counterEvents = (await audit.json()).items.filter((event: { table_name: string }) => event.table_name === 'extensions.agreement_number_counters')
+  const counterEvents = (await audit.json()).items.filter((event: { table_name: string }) => event.table_name === 'extensions.gcs_agreement_number_counters')
   expect(counterEvents.length).toBeGreaterThan(0)
   for (const event of counterEvents) {
     expect(event.scope_type).toBe('agency')

@@ -9,7 +9,7 @@
     "typecheck": "vue-tsc --noEmit",
     "test:integration:postgres": "vitest run --config vitest.postgres.config.ts",
     "test:e2e": "playwright test",
-    "test:e2e:managed": "bun scripts/test-e2e-managed.ts",
+    "test:e2e:managed": "cd ../.. && bun run scripts/nuxt-artifact-lock.ts -- bun run --cwd extensions/gcs-agreement-number scripts/test-e2e-managed.ts",
     "test:audit": "vitest run --config vitest.audit.config.ts"
   },
   "dependencies": {

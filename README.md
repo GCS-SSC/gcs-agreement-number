@@ -39,7 +39,9 @@ The host retains its per-stream uniqueness boundary and skips existing numbers,
 including soft-deleted agreements, for at most 100 candidates. Failed creation
 rolls back every allocation. Existing agreement numbers are never rewritten.
 
-Migration 0002 preserves old stream counters. Authored version-1 agency formats
+Counter storage uses `extensions.gcs_agreement_number_counters`; its checks have
+explicit domain-style names. Migration 0002 preserves old stream counters.
+Authored version-1 agency formats
 normalize to stream scope for runtime continuity; empty configurations default to
 agency scope. Old stream overrides are retained in storage but no longer used.
 Saving an old format requires satisfying the new differentiator rule. This avoids
