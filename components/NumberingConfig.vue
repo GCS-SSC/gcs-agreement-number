@@ -55,7 +55,7 @@ watch(model, value => {
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6" data-field-scope="extension.gcs-agreement-number.numbering-config">
     <section class="space-y-4">
       <div>
         <h3 class="text-base font-semibold text-highlighted">
@@ -75,43 +75,43 @@ watch(model, value => {
           {{ t(name) }}
         </h4>
         <div class="grid gap-4 sm:grid-cols-2">
-          <ExtensionFormField :label="t('type')" :name="`${name}.type`" :error="fieldError(`${name}.type`)" required>
+          <ExtensionFormField :label="t('type')" :name="`${name}.type`" :error="fieldError(`${name}.type`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.type">
             <ExtensionSelectMenu :model-value="local[name].type" :items="options" value-key="value" :disabled="locked" @update:model-value="changeType(name, $event)" />
           </ExtensionFormField>
-          <ExtensionFormField v-if="local[name].type === 'fixed'" :label="t('value')" :name="`${name}.value`" :error="fieldError(`${name}.value`)" :required="false">
+          <ExtensionFormField v-if="local[name].type === 'fixed'" :label="t('value')" :name="`${name}.value`" :error="fieldError(`${name}.value`)" :required="false" data-ui-target="extension.gcs-agreement-number.numbering-config.value">
             <ExtensionInput v-model="local[name].value" :maxlength="15" :disabled="locked" />
           </ExtensionFormField>
           <template v-if="local[name].type === 'sequence'">
-            <ExtensionFormField :label="t('start')" :name="`${name}.start`" :error="fieldError(`${name}.start`)" required>
+            <ExtensionFormField :label="t('start')" :name="`${name}.start`" :error="fieldError(`${name}.start`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.start">
               <ExtensionInput v-model="local[name].start" inputmode="numeric" :disabled="locked" />
             </ExtensionFormField>
-            <ExtensionFormField :label="t('increment')" :name="`${name}.increment`" :error="fieldError(`${name}.increment`)" required>
+            <ExtensionFormField :label="t('increment')" :name="`${name}.increment`" :error="fieldError(`${name}.increment`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.increment">
               <ExtensionInput v-model="local[name].increment" inputmode="numeric" :disabled="locked" />
             </ExtensionFormField>
-            <ExtensionFormField :label="t('width')" :name="`${name}.width`" :error="fieldError(`${name}.width`)" required>
+            <ExtensionFormField :label="t('width')" :name="`${name}.width`" :error="fieldError(`${name}.width`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.width">
               <ExtensionInput v-model="local[name].width" type="number" :min="1" :max="15" :disabled="locked" />
             </ExtensionFormField>
           </template>
           <template v-if="local[name].type === 'variable'">
-            <ExtensionFormField :label="t('field')" :name="`${name}.field`" :error="fieldError(`${name}.field`)" required>
+            <ExtensionFormField :label="t('field')" :name="`${name}.field`" :error="fieldError(`${name}.field`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.field">
               <ExtensionSelectMenu v-model="local[name].field" :items="fields" value-key="value" :disabled="locked" />
             </ExtensionFormField>
-            <ExtensionFormField :label="t('transform')" :name="`${name}.transform`" :error="fieldError(`${name}.transform`)" required>
+            <ExtensionFormField :label="t('transform')" :name="`${name}.transform`" :error="fieldError(`${name}.transform`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.transform">
               <ExtensionSelectMenu :model-value="local[name].transform" :items="transforms" value-key="value" :disabled="locked" @update:model-value="changeTransform(name, $event)" />
             </ExtensionFormField>
             <div v-if="local[name].transform === 'substring'" class="numbering-extraction-settings grid gap-4 sm:grid-cols-2">
-              <ExtensionFormField :label="t('offset')" :name="`${name}.offset`" :error="fieldError(`${name}.offset`)" required>
+              <ExtensionFormField :label="t('offset')" :name="`${name}.offset`" :error="fieldError(`${name}.offset`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.offset">
                 <ExtensionInput v-model="local[name].offset" type="number" :min="0" :max="4096" :disabled="locked" />
               </ExtensionFormField>
-              <ExtensionFormField :label="t('length')" :name="`${name}.length`" :error="fieldError(`${name}.length`)" required>
+              <ExtensionFormField :label="t('length')" :name="`${name}.length`" :error="fieldError(`${name}.length`)" required data-ui-target="extension.gcs-agreement-number.numbering-config.length">
                 <ExtensionInput v-model="local[name].length" type="number" :min="1" :max="15" :disabled="locked" />
               </ExtensionFormField>
             </div>
             <div v-if="local[name].transform === 'regex'" class="numbering-extraction-settings grid gap-4 sm:grid-cols-2">
-              <ExtensionFormField :label="t('pattern')" :name="`${name}.pattern`" :error="fieldError(`${name}.pattern`)" :description="t('regexHelp')" required>
+              <ExtensionFormField :label="t('pattern')" :name="`${name}.pattern`" :error="fieldError(`${name}.pattern`)" :description="t('regexHelp')" required data-ui-target="extension.gcs-agreement-number.numbering-config.pattern">
                 <ExtensionInput v-model="local[name].pattern" :maxlength="256" :disabled="locked" />
               </ExtensionFormField>
-              <ExtensionFormField :label="t('group')" :name="`${name}.group`" :error="fieldError(`${name}.group`)" :description="t('groupHelp')" required>
+              <ExtensionFormField :label="t('group')" :name="`${name}.group`" :error="fieldError(`${name}.group`)" :description="t('groupHelp')" required data-ui-target="extension.gcs-agreement-number.numbering-config.group">
                 <ExtensionInput v-model="local[name].group" type="number" :min="0" :max="32" :disabled="locked" />
               </ExtensionFormField>
             </div>
