@@ -28,7 +28,7 @@ export default defineGcsExtension({
       }
     }
   ]),
-  key: 'gcs-agreement-number', sdkVersion: '^0.3.2',
+  key: 'gcs-agreement-number', sdkVersion: '^0.4.0',
   configurationAccess: 'manager', configurationScope: 'agency',
   name: { en: 'Agreement numbering', fr: 'Numérotation des ententes' },
   description: { en: 'Assigns agreement numbers from configurable text, business fields and sequences.', fr: 'Attribue des numéros d’entente à partir de texte, de champs métier et de séquences configurables.' },
