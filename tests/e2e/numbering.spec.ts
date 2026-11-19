@@ -10,69 +10,22 @@ const selectLookup = async (page: Page, placeholder: string, label: string) => {
   await expect(page.getByRole('listbox')).toHaveCount(0)
 }
 
-const setDateFieldValue = async (
-  page: Page,
-  fieldIndex: number,
-  value: string
-) => {
-  const dateField = page.getByRole('group').nth(fieldIndex)
-  await expect(dateField).toBeVisible()
+const setDateFieldValue = async (page: Page, index: number, value: string) => {
+  const [year, month, day] = value.split('-')
+  if (!year || !month || !day) throw new Error(`Expected an ISO date, received ${value}`)
 
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value)
-  if (!match) throw new Error(`Expected an ISO date, received ${value}`)
-
-  const targetYear = Number(match[1])
-  const targetMonthIndex = Number(match[2]) - 1
-  const targetDate = new Date(Date.UTC(targetYear, targetMonthIndex, Number(match[3])))
-  const targetMonthName = targetDate.toLocaleString('en-US', {
-    month: 'long',
-    timeZone: 'UTC'
-  })
-  const targetAccessibleName = targetDate.toLocaleDateString('en-US', {
-    day: 'numeric',
-    month: 'long',
-    weekday: 'long',
-    year: 'numeric',
-    timeZone: 'UTC'
-  })
-
-  await dateField.click()
-  const calendar = page.locator('[data-slot="content"]').last()
-  const previousMonth = calendar.getByRole('button', { name: /previous month/i })
-  const nextMonth = calendar.getByRole('button', { name: /next month/i })
-
-  for (let attempt = 0; attempt < 24; attempt++) {
-    const targetHeader = calendar
-      .getByText(new RegExp(`^${targetMonthName}\\s+${targetYear}$`, 'i'))
-      .first()
-    if (await targetHeader.count()) break
-
-    const visibleHeader = calendar
-      .locator('h2, [data-slot="heading"], [aria-live="polite"]')
-      .filter({ hasText: /\d{4}/ })
-      .first()
-    const headerText = (await visibleHeader.textContent())?.trim() ?? ''
-    const parsedHeader = /^([A-Za-z]+)\s+(\d{4})$/.exec(headerText)
-    if (!parsedHeader) break
-
-    const visibleDate = new Date(Date.UTC(
-      Number(parsedHeader[2]),
-      new Date(`${parsedHeader[1]} 1, ${parsedHeader[2]}`).getUTCMonth(),
-      1
-    ))
-    const monthDifference = (targetYear - visibleDate.getUTCFullYear()) * 12
-      + targetMonthIndex - visibleDate.getUTCMonth()
-    if (monthDifference === 0) break
-
-    await (monthDifference > 0 ? nextMonth : previousMonth).click()
+  const fields = [
+    [page.getByRole('spinbutton', { name: /year/i }).nth(index), year],
+    [page.getByRole('spinbutton', { name: /month/i }).nth(index), month],
+    [page.getByRole('spinbutton', { name: /day/i }).nth(index), day]
+  ] as const
+  for (const [field, part] of fields) {
+    await field.click()
+    await field.press('Backspace')
+    await field.pressSequentially(part)
   }
-
-  const day = page.getByRole('button', {
-    name: targetAccessibleName,
-    exact: true
-  })
-  await expect(day).toBeVisible()
-  await day.click()
+  await fields[2][0].press('Tab')
+  for (const [field, part] of fields) await expect(field).toHaveText(part)
 }
 
 // Public host contracts only; all extension expectations belong to this workspace.
